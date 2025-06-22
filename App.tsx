@@ -257,18 +257,12 @@ const App: React.FC = () => {
     setEditingContribution(null); 
   };
 
-  const confirmDeleteContribution = async () => {
-    console.log("🔥 confirmDeleteContribution called", { itemToDeleteId, isDeletingContribution });
-
-    if (!itemToDeleteId || isDeletingContribution) {
-      console.log("❌ Early return", { itemToDeleteId, isDeletingContribution });
+  const confirmDeleteContribution = async (contributionId: string) => {
+    if (!contributionId || isDeletingContribution) {
       return; // Prevent multiple calls
     }
 
-    const contributionId = itemToDeleteId;
     const previousContributions = [...contributions]; // Capture current state for potential rollback
-
-    console.log("✅ Starting delete process for:", contributionId);
 
     // Set loading state first
     setIsDeletingContribution(true);
@@ -310,7 +304,7 @@ const App: React.FC = () => {
       title: "Delete Contribution?",
       description: `Are you sure you want to delete the contribution: "${contributionToDelete.comment || `Amount: $${contributionToDelete.amount_usd.toLocaleString()}`}"? This action cannot be undone.`,
       confirmButtonText: "Delete",
-      onConfirm: confirmDeleteContribution
+      onConfirm: () => confirmDeleteContribution(contributionId)
     });
     setIsAlertOpen(true);
   };
