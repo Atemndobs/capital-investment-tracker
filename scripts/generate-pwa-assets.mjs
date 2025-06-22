@@ -13,7 +13,7 @@ const SIZES = [
   { size: 1024, name: 'splash-1024x1024.png' },
 ];
 
-const INPUT_ICON = 'public/icons/stats.jpg';
+const INPUT_ICON = 'public/icons/graph.png';
 
 const OUTPUT_DIR = 'public/icons';
 

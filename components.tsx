@@ -160,12 +160,56 @@ const destructiveButtonClasses = "px-4 py-2 text-sm font-medium text-white bg-re
 
 const labelBaseClasses = "block text-sm font-medium text-slate-700 dark:text-dark-text-secondary";
 
-export const Navbar: React.FC<{ 
+// PWA Install Hook
+const usePWAInstall = () => {
+  const [deferredPrompt, setDeferredPrompt] = React.useState<any>(null);
+  const [isInstallable, setIsInstallable] = React.useState(false);
+
+  React.useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+    }
+  };
+
+  return { isInstallable, handleInstall };
+};
+
+export const Navbar: React.FC<{
   onAddContribution: () => void;
   onOpenSettings: () => void;
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-}> = ({ onAddContribution, onOpenSettings, isDarkMode, toggleDarkMode }) => (
+}> = ({ onAddContribution, onOpenSettings, isDarkMode, toggleDarkMode }) => {
+  const { isInstallable, handleInstall } = usePWAInstall();
+
+  return (
     <nav className="bg-nebula-purple dark:bg-dark-card shadow-lg sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
@@ -173,6 +217,18 @@ export const Navbar: React.FC<{
             <span className="font-bold text-2xl text-white dark:text-dark-text-primary">NebulaLogix Capital Tracker</span>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
+            {isInstallable && (
+              <button
+                onClick={handleInstall}
+                className="p-2 rounded-full text-white dark:text-dark-text-primary hover:bg-white/20 dark:hover:bg-white/10 transition-colors"
+                aria-label="Install app"
+                title="Install app"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+              </button>
+            )}
              <button onClick={onOpenSettings} className="p-2 rounded-full text-white dark:text-dark-text-primary hover:bg-white/20 dark:hover:bg-white/10 transition-colors" aria-label="Open settings" title="Open settings">
               <CogIcon className="w-6 h-6" title="Settings"/>
             </button>
@@ -187,7 +243,8 @@ export const Navbar: React.FC<{
         </div>
       </div>
     </nav>
-);
+  );
+};
 
 interface SetupBannerProps {
   onOpenSettings: () => void;

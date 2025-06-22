@@ -178,6 +178,20 @@ const App: React.FC = () => {
     localStorage.setItem(THEME_STORAGE_KEY, isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // PWA Service Worker Registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator && import.meta.env.PROD) {
+      // Register the service worker manually for production
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('PWA Service Worker registered successfully:', registration);
+        })
+        .catch((error) => {
+          console.log('PWA Service Worker registration failed:', error);
+        });
+    }
+  }, []);
+
   const toggleDarkMode = () => setIsDarkMode((prevMode: boolean) => !prevMode);
 
   const handleAddOrUpdateContribution = async (

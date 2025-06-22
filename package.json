@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "generate-pwa-assets": "node scripts/generate-pwa-assets.mjs",
+    "setup-pwa": "node scripts/setup-pwa-icons.js"
   },
   "dependencies": {
     "@google/genai": "^1.5.1",
@@ -21,6 +23,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",
     "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^1.0.0"
   }
 }
