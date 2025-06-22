@@ -262,12 +262,222 @@ interface ContributionDonutChartProps {
 }
 
 const RADIAN = Math.PI / 180;
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.7; 
+
+// Mobile label renderer (inside the chart) - shows percentage
+const renderMobileLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.7;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   if (isNaN(percent) || percent < 0.03) return null;
   return <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="12px" fontWeight="bold">{`${(percent * 100).toFixed(0)}%`}</text>;
+};
+
+// Desktop label renderer with leader lines AND percentage inside donut
+const renderDesktopLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, payload, index, colors, isDarkMode, allContributions, totalItems }: any) => {
+  if (isNaN(percent) || percent < 0.03) return null;
+
+  const LEADER_LINE_LENGTH = 15; // Radial extension from arc
+  const HORIZONTAL_LENGTH = 70; // Horizontal finish length
+  const BEND_ANGLE = 35; // Clean bend angle
+
+  // Calculate the starting point at the arc midpoint
+  const startRadius = outerRadius;
+  const startX = cx + startRadius * Math.cos(-midAngle * RADIAN);
+  const startY = cy + startRadius * Math.sin(-midAngle * RADIAN);
+
+  // Calculate the radial extension point
+  const radialRadius = startRadius + LEADER_LINE_LENGTH;
+  const radialX = cx + radialRadius * Math.cos(-midAngle * RADIAN);
+  const radialY = cy + radialRadius * Math.sin(-midAngle * RADIAN);
+
+  // Determine if we're on the left or right side of the chart
+  const isRightSide = midAngle < 90 || midAngle > 270;
+
+  // Calculate the bend point (outward bend)
+  const bendDirection = isRightSide ? 1 : -1;
+  const bendAngleFromRadial = midAngle + (BEND_ANGLE * bendDirection);
+  const bendLength = 40; // Distance from radial point to bend point
+  const bendX = radialX + bendLength * Math.cos(-bendAngleFromRadial * RADIAN);
+  const bendY = radialY + bendLength * Math.sin(-bendAngleFromRadial * RADIAN);
+
+  // Calculate the horizontal finish point
+  const horizontalX = bendX + (isRightSide ? HORIZONTAL_LENGTH : -HORIZONTAL_LENGTH);
+  const horizontalY = bendY; // Same Y as bend point for horizontal line
+
+  // Card dimensions and positioning
+  const cardWidth = 200;
+  const cardHeight = 110;
+  const labelX = horizontalX + (isRightSide ? 10 : -cardWidth - 10);
+  const labelY = horizontalY;
+
+  // Extract first name
+  const firstName = payload.name.split(' ')[0];
+
+  // Get recent contributions for this contributor
+  const recentContributions = allContributions
+    .filter((c: any) => c.contributor_id === payload.contributorId && (!c.isOptimistic || c.hasError === false))
+    .sort((a: any, b: any) => new Date(b.contributed_at).getTime() - new Date(a.contributed_at).getTime())
+    .slice(0, 3); // Get top 3 recent contributions
+
+  // Format amounts for display
+  const formatAmountCompact = (amount: number) => {
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}K`;
+    return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  // Get recent contributions for this contributor
+  const contributorContributions = allContributions
+    .filter((c: any) => c.contributor_id === payload.contributorId && (!c.isOptimistic || c.hasError === false))
+    .sort((a: any, b: any) => new Date(b.contributed_at).getTime() - new Date(a.contributed_at).getTime())
+    .slice(0, 3); // Get top 3 recent contributions
+
+  // Format amounts for display
+  const formatAmount = (amount: number) => {
+    if (amount >= 1000000) return `$${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `$${(amount / 1000).toFixed(1)}K`;
+    return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  };
+
+  const lineColor = isDarkMode ? '#B0B0B0' : '#64748B';
+  const textColor = isDarkMode ? '#EAEAEA' : '#1E293B';
+  const sliceColor = colors[index % colors.length];
+
+  // Calculate position for percentage inside donut
+  const percentRadius = innerRadius + (outerRadius - innerRadius) * 0.7;
+  const percentX = cx + percentRadius * Math.cos(-midAngle * RADIAN);
+  const percentY = cy + percentRadius * Math.sin(-midAngle * RADIAN);
+
+  return (
+    <g key={`leader-${index}`}>
+      {/* Percentage inside donut */}
+      <text
+        x={percentX}
+        y={percentY}
+        fill="white"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="12px"
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+
+      {/* Simple 3-segment leader line: radial → bend → horizontal */}
+      <path
+        d={`M ${startX} ${startY} L ${radialX} ${radialY} L ${bendX} ${bendY} L ${horizontalX} ${horizontalY}`}
+        stroke={lineColor}
+        strokeWidth={2.5}
+        fill="none"
+        opacity={0.9}
+      />
+
+      {/* Extended Label background */}
+      <rect
+        x={labelX}
+        y={labelY - (cardHeight / 2)}
+        width={cardWidth}
+        height={cardHeight}
+        rx={8}
+        fill={isDarkMode ? '#1F2021' : '#FFFFFF'}
+        stroke={isDarkMode ? '#3A3C3E' : '#E2E8F0'}
+        strokeWidth={1.5}
+        opacity={0.98}
+        filter="drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1))"
+      />
+
+      {/* Color indicator bar */}
+      <rect
+        x={labelX}
+        y={labelY - (cardHeight / 2)}
+        width={4}
+        height={cardHeight}
+        rx={2}
+        fill={sliceColor}
+      />
+
+      {/* Line 1: First Name */}
+      <text
+        x={labelX + 12}
+        y={labelY - 40}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontSize="14px"
+        fontWeight="700"
+        fill={textColor}
+      >
+        {firstName.length > 15 ? `${firstName.substring(0, 15)}...` : firstName}
+      </text>
+
+      {/* Line 2: Total Amount */}
+      <text
+        x={labelX + 12}
+        y={labelY - 20}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontSize="13px"
+        fontWeight="600"
+        fill={sliceColor}
+      >
+        {payload.value >= 1000000
+          ? `$${(payload.value / 1000000).toFixed(1)}M`
+          : payload.value >= 1000
+          ? `$${(payload.value / 1000).toFixed(1)}K`
+          : `$${payload.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+        }
+      </text>
+
+      {/* Line 3: Recent Contribution 1 */}
+      <text
+        x={labelX + 12}
+        y={labelY}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontSize="11px"
+        fontWeight="500"
+        fill={isDarkMode ? '#B0B0B0' : '#64748B'}
+      >
+        {recentContributions[0]
+          ? `${new Date(recentContributions[0].contributed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${formatAmountCompact(recentContributions[0].amount_usd)}`
+          : `${(percent * 100).toFixed(1)}% of total`
+        }
+      </text>
+
+      {/* Line 4: Recent Contribution 2 */}
+      <text
+        x={labelX + 12}
+        y={labelY + 20}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontSize="11px"
+        fill={isDarkMode ? '#9CA3AF' : '#6B7280'}
+      >
+        {recentContributions[1]
+          ? `${new Date(recentContributions[1].contributed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${formatAmountCompact(recentContributions[1].amount_usd)}`
+          : recentContributions.length > 0
+          ? `${recentContributions.length} contribution${recentContributions.length > 1 ? 's' : ''} total`
+          : 'No contributions yet'
+        }
+      </text>
+
+      {/* Line 5: Recent Contribution 3 or Summary */}
+      <text
+        x={labelX + 12}
+        y={labelY + 40}
+        textAnchor="start"
+        dominantBaseline="middle"
+        fontSize="10px"
+        fill={isDarkMode ? '#9CA3AF' : '#6B7280'}
+      >
+        {recentContributions[2]
+          ? `${new Date(recentContributions[2].contributed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${formatAmountCompact(recentContributions[2].amount_usd)}`
+          : recentContributions.length > 2
+          ? `+${recentContributions.length - 2} more contributions`
+          : `${(percent * 100).toFixed(1)}% share`
+        }
+      </text>
+    </g>
+  );
 };
 
 interface CustomTooltipContentProps {
@@ -326,11 +536,30 @@ const CustomTooltipContent: React.FC<CustomTooltipContentProps> = ({ active, pay
   return null;
 };
 
+// Hook to detect screen size
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768); // md breakpoint
+    };
+
+    checkIsMobile();
+    window.addEventListener('resize', checkIsMobile);
+    return () => window.removeEventListener('resize', checkIsMobile);
+  }, []);
+
+  return isMobile;
+};
+
 export const ContributionDonutChart: React.FC<ContributionDonutChartProps> = ({ summaries, colors, allContributions, isDarkMode }) => {
+  const isMobile = useIsMobile();
+
   const chartData = summaries.filter(s => s.stats.total > 0).map(summary => ({
-    name: summary.name, 
-    value: summary.stats.total, 
-    percentage: summary.stats.percentageShare, 
+    name: summary.name,
+    value: summary.stats.total,
+    percentage: summary.stats.percentageShare,
     contributorId: summary.id, // Pass contributorId for the custom tooltip
   }));
 
@@ -341,26 +570,41 @@ export const ContributionDonutChart: React.FC<ContributionDonutChartProps> = ({ 
       </div>
     );
   }
-  
+
+  // Custom label renderer that passes additional props for desktop version
+  const labelRenderer = (props: any) => {
+    if (isMobile) {
+      return renderMobileLabel(props);
+    } else {
+      return renderDesktopLabel({
+        ...props,
+        colors,
+        isDarkMode,
+        allContributions,
+        totalItems: chartData.length
+      });
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-dark-card p-4 md:p-6 rounded-xl shadow-lg animate-fade-in-up dark:shadow-purple-500/10" style={{animationDelay: '0.2s'}}>
       <h3 className="text-xl font-semibold text-slate-800 dark:text-dark-text-primary mb-6 flex items-center">
         <ChartPieIcon className="w-6 h-6 text-nebula-purple dark:text-brand-purple mr-2" title="Chart Icon"/> Current Contribution Breakdown
       </h3>
-      <div style={{ width: '100%', height: 400 }}>
+      <div style={{ width: '100%', height: isMobile ? 400 : 600 }}>
         <ResponsiveContainer>
           <PieChart>
-            <Pie 
-              data={chartData} 
-              cx="50%" 
-              cy="50%" 
-              labelLine={false} 
-              label={renderCustomizedLabel} 
-              innerRadius="55%" 
-              outerRadius="85%" 
-              fill="#8884d8" 
-              dataKey="value" 
-              nameKey="name" 
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={labelRenderer}
+              innerRadius="55%"
+              outerRadius="85%"
+              fill="#8884d8"
+              dataKey="value"
+              nameKey="name"
               paddingAngle={2}
             >
               {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={colors[index % colors.length]} stroke={isDarkMode ? '#1F2021' : '#FFFFFF'} strokeWidth={2}/>)}
@@ -369,7 +613,7 @@ export const ContributionDonutChart: React.FC<ContributionDonutChartProps> = ({ 
               content={<CustomTooltipContent allContributions={allContributions} isDarkMode={isDarkMode} />}
               cursor={{ fill: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)' }}
             />
-            <Legend wrapperStyle={{paddingTop: '20px'}}/>
+            {isMobile && <Legend wrapperStyle={{paddingTop: '20px'}}/>}
           </PieChart>
         </ResponsiveContainer>
       </div>
