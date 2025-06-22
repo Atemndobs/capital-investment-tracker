@@ -25,8 +25,9 @@ export interface Contribution {
 export interface SummaryStats {
   total: number;
   percentageShare: number;
-  diffToTarget5050: number; 
-  progressTo50PercentTarget: number;
+  diffToTarget: number;
+  progressToTarget: number;
+  amountOwedToMatchTop: number;
 }
 
 export interface ContributorSummary extends Contributor {

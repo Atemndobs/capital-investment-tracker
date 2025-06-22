@@ -376,16 +376,41 @@ const App: React.FC = () => {
 
   const contributorSummaries = useMemo((): ContributorSummary[] => {
     const grandTotal = contributions.filter((c: Contribution) => !c.isOptimistic || c.hasError === false).reduce((sum: number, c: Contribution) => sum + c.amount_usd, 0);
-    return contributors.map((contributor: Contributor) => {
+
+    // Calculate each contributor's total
+    const contributorTotals = contributors.map((contributor: Contributor) => {
       const totalByContributor = contributions
         .filter((c: Contribution) => c.contributor_id === contributor.id && (!c.isOptimistic || c.hasError === false))
         .reduce((sum: number, c: Contribution) => sum + c.amount_usd, 0);
+      return { contributor, total: totalByContributor };
+    });
+
+    // Find the maximum contribution amount
+    const maxContribution = Math.max(...contributorTotals.map((ct: { contributor: Contributor; total: number }) => ct.total), 0);
+
+    return contributorTotals.map(({ contributor, total: totalByContributor }: { contributor: Contributor; total: number }) => {
       const percentageShare = grandTotal > 0 ? (totalByContributor / grandTotal) * 100 : 0;
-      const targetAmountFor50Percent = grandTotal > 0 ? grandTotal * 0.5 : 0;
-      let progressTo50PercentTarget = targetAmountFor50Percent > 0 ? (totalByContributor / targetAmountFor50Percent) * 100 : (grandTotal === 0 ? 100 : 0);
-      progressTo50PercentTarget = Math.min(100, Math.max(0, progressTo50PercentTarget));
-      const diffToTarget5050 = totalByContributor - targetAmountFor50Percent;
-      return { ...contributor, stats: { total: totalByContributor, percentageShare, diffToTarget5050, progressTo50PercentTarget } };
+
+      // Amount needed to match the highest contributor
+      const amountOwedToMatchTop = Math.max(0, maxContribution - totalByContributor);
+
+      // Progress towards matching the top contributor (0-100%)
+      let progressToTarget = maxContribution > 0 ? (totalByContributor / maxContribution) * 100 : 100;
+      progressToTarget = Math.min(100, Math.max(0, progressToTarget));
+
+      // Difference to target (negative means they owe, positive means they're ahead)
+      const diffToTarget = totalByContributor - maxContribution;
+
+      return {
+        ...contributor,
+        stats: {
+          total: totalByContributor,
+          percentageShare,
+          diffToTarget,
+          progressToTarget,
+          amountOwedToMatchTop
+        }
+      };
     });
   }, [contributions, contributors]);
 
@@ -496,7 +521,14 @@ const App: React.FC = () => {
         )}
         
         <footer className="text-center py-8 text-slate-500 dark:text-dark-text-secondary border-t border-slate-200 dark:border-dark-border mt-12">
-            <p>&copy; {new Date().getFullYear()} Nebula Logix. Capital Investment Tracker.</p>
+            <div className="flex items-center justify-center space-x-2 mb-2">
+              <img
+                src="/Logo_Round_white.PNG"
+                alt="Company Logo"
+                className="h-6 w-6 object-contain"
+              />
+              <p>&copy; {new Date().getFullYear()} Capital Investment Tracker.</p>
+            </div>
             <p className="text-xs mt-1">For internal use only.</p>
         </footer>
       </main>

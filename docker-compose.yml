@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: capital-tracker
     restart: unless-stopped
-    image: atemndobs/capital-tracker-amd64:v0.1
+    image: atemndobs/capital-tracker-amd64:v0.3
     ports:
       - "5533:80"
     env_file:

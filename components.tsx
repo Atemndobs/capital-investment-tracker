@@ -213,8 +213,13 @@ export const Navbar: React.FC<{
     <nav className="bg-nebula-purple dark:bg-dark-card shadow-lg sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <div className="flex items-center">
-            <span className="font-bold text-2xl text-white dark:text-dark-text-primary">NebulaLogix Capital Tracker</span>
+          <div className="flex items-center space-x-3">
+            <img
+              src="/Logo_Round_white.PNG"
+              alt="Company Logo"
+              className="h-12 w-12 object-contain"
+            />
+            <span className="font-bold text-2xl text-white dark:text-dark-text-primary">Capital Tracker</span>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             {isInstallable && (
@@ -271,7 +276,7 @@ interface SummaryCardProps {
   isDarkMode: boolean;
 }
 export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, isDarkMode }) => {
-  const styles = getCardStyles(contributor.stats.progressTo50PercentTarget, color, isDarkMode);
+  const styles = getCardStyles(contributor.stats.progressToTarget, color, isDarkMode);
   const cardStyle = { borderTopColor: color, borderTopWidth: '4px', backgroundColor: styles.backgroundColor };
   
   return (
@@ -297,15 +302,18 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, is
             <span className={`font-semibold ${styles.textColor}`}>{contributor.stats.percentageShare.toFixed(2)}%</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className={`${styles.secondaryTextColor}`}>vs. 50% Target:</span>
-            <span className={`font-semibold ${contributor.stats.diffToTarget5050 >= 0 ? styles.positiveStatusColor : styles.negativeStatusColor}`}>
-              {contributor.stats.diffToTarget5050 >= 0 ? '+' : ''}${contributor.stats.diffToTarget5050.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className={`${styles.secondaryTextColor}`}>Owed to Match:</span>
+            <span className={`font-semibold ${contributor.stats.amountOwedToMatchTop === 0 ? styles.positiveStatusColor : styles.negativeStatusColor}`}>
+              ${contributor.stats.amountOwedToMatchTop.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
         </div>
       </div>
        <div className={`mt-4 pt-4 border-t ${styles.innerBorderColor}`}>
-        <p className={`text-xs ${styles.footerTextColor}`}>Represents {contributor.stats.percentageShare.toFixed(1)}% of total capital. {contributor.email && `Contact: ${contributor.email}`}</p>
+        <div className={`text-xs ${styles.footerTextColor} space-y-1`}>
+          <p>Represents {contributor.stats.percentageShare.toFixed(1)}% of total capital</p>
+          <p>Total Amount: ${contributor.stats.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+        </div>
       </div>
     </div>
   );
