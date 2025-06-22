@@ -375,6 +375,23 @@ const App: React.FC = () => {
     });
   }, [contributions, contributors]);
 
+  // Dynamic grid classes based on number of cards
+  const getGridClasses = (cardCount: number): string => {
+    switch (cardCount) {
+      case 1:
+        return "grid grid-cols-1 gap-6 mb-8"; // Full width
+      case 2:
+        return "grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"; // Two cards side-by-side
+      case 3:
+        return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"; // All three on same line on large screens
+      case 4:
+        return "grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"; // 2x2 layout
+      default:
+        // 5+ cards: responsive 2-column on medium, 3-column on large
+        return "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8";
+    }
+  };
+
   const getModalTitle = () => {
     switch(modalView) {
       case ModalView.ADD_CONTRIBUTION: return 'Add New Contribution';
@@ -410,7 +427,7 @@ const App: React.FC = () => {
               <h2 className="text-3xl font-bold text-slate-800 dark:text-dark-text-primary mb-6">Dashboard</h2>
               {contributors.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
+                  <div className={getGridClasses(contributorSummaries.length)}>
                     {contributorSummaries.map((summary: ContributorSummary, index: number) => (
                       <SummaryCard
                         key={summary.id}
