@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capital Investment Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class', // Enable class-based dark mode
+      theme: {
+        extend: {
+          colors: {
+            'brand-purple': '#6A4DF3',
+            'brand-lavender': '#E9D5FF', 
+            'nebula-blue': '#4F46E5',
+            'nebula-light-blue': '#A5B4FC',
+            'nebula-purple': '#8B5CF6', 
+            'nebula-light-purple': '#DDD6FE',
+
+            // Dark Theme Palette
+            'dark-bg': '#161718', 
+            'dark-card': '#1F2021', 
+            'dark-card-hover': '#282A2C', 
+            'dark-text-primary': '#EAEAEA', 
+            'dark-text-secondary': '#B0B0B0', 
+            'dark-border': '#3A3C3E', 
+            'dark-input': '#282A2C',
+
+            // Status colors for Supabase/API connections
+            'status-green': '#10B981', // Emerald 500
+            'status-red': '#EF4444',   // Red 500
+            'status-amber': '#F59E0B', // Amber 500
+          },
+          animation: {
+            'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+          },
+          keyframes: {
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Applying base colors via Tailwind classes on body in App.tsx or html tag directly */
+
+    /* Custom scrollbar for Webkit browsers - Light mode */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1; /* Light mode track */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c4b5fd; /* nebula-light-purple */
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #8b5cf6; /* nebula-purple */
+    }
+
+    /* Custom scrollbar for Webkit browsers - Dark mode */
+    .dark ::-webkit-scrollbar-track {
+      background: #282A2C; /* Dark mode track (dark-card-hover) */
+    }
+    .dark ::-webkit-scrollbar-thumb {
+      background: #4A5568; /* A medium gray for dark scrollbar thumb */
+      border-radius: 4px;
+    }
+    .dark ::-webkit-scrollbar-thumb:hover {
+      background: #6A4DF3; /* brand-purple for hover */
+    }
+
+    /* Ensure Recharts text is visible in dark mode */
+    .dark .recharts-text, .dark .recharts-legend-item-text, .dark .recharts-tooltip-label, .dark .recharts-tooltip-item {
+      fill: #EAEAEA !important; /* dark-text-primary */
+    }
+     .dark .recharts-cartesian-axis-tick-value {
+        fill: #B0B0B0 !important; /* dark-text-secondary */
+    }
+    .dark .recharts-pie-label-text {
+        fill: #FFFFFF !important; /* Ensure high contrast for labels on pie slices */
+    }
+
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.5.1",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.45.0",
+    "react": "https://esm.sh/react@19.1.0",
+    "recharts": "https://esm.sh/recharts@^2.15.3",
+    "react/": "https://esm.sh/react@19.1.0/",
+    "react-dom/": "https://esm.sh/react-dom@19.1.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-dark-bg dark:text-dark-text-primary transition-colors duration-300">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

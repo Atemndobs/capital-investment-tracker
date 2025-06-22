@@ -1,0 +1,6 @@
+{
+  "name": "Capital Investment Tracker",
+  "description": "An internal web application to track capital investments, view summaries, and visualize contribution trends. Includes Gemini-powered comment generation for new contributions.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
