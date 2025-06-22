@@ -1,15 +1,12 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Navbar, SummaryCard, ContributionDonutChart, ContributionTable, ContributionForm, Modal, SettingsModal, LoadingSpinner, SetupBanner, AlertDialog } from './components';
 import { Contribution, Contributor, ModalView, ContributorSummary, SupabaseCredentials, SupabaseStatus, GeminiStatus } from './types';
-import { 
-  CHART_COLORS, 
-  API_KEY_STORAGE_KEY, 
-  SUPABASE_URL_STORAGE_KEY, 
+import {
+  CHART_COLORS,
+  API_KEY_STORAGE_KEY,
+  SUPABASE_URL_STORAGE_KEY,
   SUPABASE_ANON_KEY_STORAGE_KEY,
-  THEME_STORAGE_KEY,
-  WINDOW_SUPABASE_URL_KEY,
-  WINDOW_SUPABASE_ANON_KEY_KEY
+  THEME_STORAGE_KEY
 } from './constants';
 import { initializeGeminiService, getGeminiApiKeyStatus as getServiceGeminiStatus } from './services';
 import { 
@@ -57,8 +54,13 @@ const App: React.FC = () => {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [contributors, setContributors] = useState<Contributor[]>([]);
   
-  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(null);
-  const [supabaseCreds, setSupabaseCreds] = useState<SupabaseCredentials>({ url: null, anonKey: null });
+  // Attempt to load API keys and Supabase credentials from environment variables first
+  const initialGeminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || null;
+  const initialSupabaseUrl = import.meta.env.VITE_SUPABASE_URL || null;
+  const initialSupabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || null;
+
+  const [geminiApiKey, setGeminiApiKey] = useState<string | null>(initialGeminiApiKey);
+  const [supabaseCreds, setSupabaseCreds] = useState<SupabaseCredentials>({ url: initialSupabaseUrl, anonKey: initialSupabaseAnonKey });
   
   const [modalView, setModalView] = useState<ModalView>(ModalView.NONE);
   const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
@@ -78,7 +80,7 @@ const App: React.FC = () => {
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertConfig, setAlertConfig] = useState<AlertConfig | null>(null);
   const [itemToDeleteId, setItemToDeleteId] = useState<string | null>(null);
-
+  const [isDeletingContribution, setIsDeletingContribution] = useState(false); // Declared only once
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -89,47 +91,34 @@ const App: React.FC = () => {
     return false;
   });
 
+  // Initialize services and load data based on environment variables or fallbacks
   useEffect(() => {
-    const storedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    setGeminiApiKey(storedApiKey);
-    initializeGeminiService(storedApiKey);
+    // Initialize Gemini
+    initializeGeminiService(geminiApiKey);
     setCurrentGeminiStatus(getServiceGeminiStatus());
 
-    // @ts-ignore
-    const windowSupabaseUrl = window[WINDOW_SUPABASE_URL_KEY] as string | undefined;
-    // @ts-ignore
-    const windowSupabaseAnonKey = window[WINDOW_SUPABASE_ANON_KEY_KEY] as string | undefined;
-
-    let resolvedUrl: string | null = null;
-    let resolvedAnonKey: string | null = null;
-
-    if (windowSupabaseUrl && windowSupabaseAnonKey) {
-      resolvedUrl = windowSupabaseUrl;
-      resolvedAnonKey = windowSupabaseAnonKey;
-      localStorage.setItem(SUPABASE_URL_STORAGE_KEY, resolvedUrl);
-      localStorage.setItem(SUPABASE_ANON_KEY_STORAGE_KEY, resolvedAnonKey);
-      setShowSetupBanner(false);
-    } else {
-      const storedSupabaseUrl = localStorage.getItem(SUPABASE_URL_STORAGE_KEY);
-      const storedSupabaseAnonKey = localStorage.getItem(SUPABASE_ANON_KEY_STORAGE_KEY);
-      if (storedSupabaseUrl && storedSupabaseAnonKey) {
-        resolvedUrl = storedSupabaseUrl;
-        resolvedAnonKey = storedSupabaseAnonKey;
+    // Initialize Supabase
+    if (supabaseCreds.url && supabaseCreds.anonKey) {
+      if (initializeSupabaseService(supabaseCreds.url, supabaseCreds.anonKey)) {
+        setCurrentSupabaseStatus(getServiceSupabaseStatus());
         setShowSetupBanner(false);
       } else {
-        setShowSetupBanner(true);
+        setCurrentSupabaseStatus(getServiceSupabaseStatus()); // Update status even if initialization fails
+        setShowSetupBanner(true); // Show banner if initialization fails
       }
+    } else {
+      setCurrentSupabaseStatus(getServiceSupabaseStatus()); // Reflect that Supabase is not configured
+      setShowSetupBanner(true); // Show banner if credentials are not set
     }
-    setSupabaseCreds({ url: resolvedUrl, anonKey: resolvedAnonKey });
     setInitialConfigAttempted(true);
-  }, []);
+  }, [geminiApiKey, supabaseCreds]); // Re-run if keys/creds change
 
+  // Load Supabase data if Supabase is successfully initialized
   const loadSupabaseData = useCallback(async () => {
     if (!initialConfigAttempted) return;
 
-    if (initializeSupabaseService(supabaseCreds.url, supabaseCreds.anonKey)) {
-      setCurrentSupabaseStatus(getServiceSupabaseStatus());
-      setShowSetupBanner(false);
+    // Check if Supabase is actually configured and initialized
+    if (currentSupabaseStatus.type === 'success') {
       setIsLoadingData(true);
       try {
         const [fetchedContributors, fetchedContributions] = await Promise.all([
@@ -148,29 +137,35 @@ const App: React.FC = () => {
         setIsLoadingData(false);
       }
     } else {
-      setCurrentSupabaseStatus(getServiceSupabaseStatus());
-      setContributors([]); 
+      // If Supabase is not successful, ensure data is cleared and banner is shown if needed
+      setContributors([]);
       setContributions([]);
       if (!supabaseCreds.url || !supabaseCreds.anonKey) {
-          setShowSetupBanner(true);
+        setShowSetupBanner(true);
       }
     }
-  }, [supabaseCreds, initialConfigAttempted]);
+  }, [supabaseCreds, initialConfigAttempted, currentSupabaseStatus]); // Depend on status to trigger data load
 
   useEffect(() => {
     loadSupabaseData();
   }, [loadSupabaseData]);
 
 
+  // Persist Gemini API Key to localStorage if it's set
   useEffect(() => {
-    if (geminiApiKey) localStorage.setItem(API_KEY_STORAGE_KEY, geminiApiKey);
-    else localStorage.removeItem(API_KEY_STORAGE_KEY);
+    if (geminiApiKey) {
+      localStorage.setItem(API_KEY_STORAGE_KEY, geminiApiKey);
+    } else {
+      localStorage.removeItem(API_KEY_STORAGE_KEY);
+    }
+    // Re-initialize Gemini service if the key changes
     initializeGeminiService(geminiApiKey);
     setCurrentGeminiStatus(getServiceGeminiStatus());
   }, [geminiApiKey]);
 
+  // Persist Supabase credentials to localStorage if they are set
   useEffect(() => {
-    if (initialConfigAttempted) { 
+    if (initialConfigAttempted) {
         if (supabaseCreds.url) localStorage.setItem(SUPABASE_URL_STORAGE_KEY, supabaseCreds.url);
         else localStorage.removeItem(SUPABASE_URL_STORAGE_KEY);
         if (supabaseCreds.anonKey) localStorage.setItem(SUPABASE_ANON_KEY_STORAGE_KEY, supabaseCreds.anonKey);
@@ -183,7 +178,7 @@ const App: React.FC = () => {
     localStorage.setItem(THEME_STORAGE_KEY, isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
-  const toggleDarkMode = () => setIsDarkMode(prevMode => !prevMode);
+  const toggleDarkMode = () => setIsDarkMode((prevMode: boolean) => !prevMode);
 
   const handleAddOrUpdateContribution = async (
     contributionData: Omit<Contribution, 'id' | 'created_at' | 'updated_at'>, 
@@ -193,7 +188,7 @@ const App: React.FC = () => {
     closeModal(); 
 
     if (originalId) { 
-      const originalContribution = contributions.find(c => c.id === originalId);
+      const originalContribution = contributions.find((c: Contribution) => c.id === originalId);
       if (!originalContribution) {
         console.error("Original contribution not found for update.");
         setIsSavingContribution(false);
@@ -207,7 +202,7 @@ const App: React.FC = () => {
         isOptimistic: true,
         hasError: false,
       };
-      setContributions(prev => prev.map(c => c.id === originalId ? optimisticUpdatedContribution : c));
+      setContributions((prev: Contribution[]) => prev.map((c: Contribution) => c.id === originalId ? optimisticUpdatedContribution : c));
       
       try {
         const updatedFromSupabase = await sbUpdateContribution(originalId, {
@@ -215,12 +210,12 @@ const App: React.FC = () => {
           amount_usd: Number(contributionData.amount_usd),
           comment: contributionData.comment,
         });
-        setContributions(prev => prev.map(c => c.id === originalId ? { ...updatedFromSupabase, isOptimistic: false, hasError: false } : c));
+        setContributions((prev: Contribution[]) => prev.map((c: Contribution) => c.id === originalId ? { ...updatedFromSupabase, isOptimistic: false, hasError: false } : c));
       } catch (error: any) {
         console.error("Error updating contribution in Supabase:", error);
         const errorMessage = getFormattedErrorMessage(error);
         alert(`Failed to update contribution: ${errorMessage}. Reverting changes.`);
-        setContributions(prev => prev.map(c => c.id === originalId ? { ...originalContribution, hasError: true, isOptimistic: false } : c));
+        setContributions((prev: Contribution[]) => prev.map((c: Contribution) => c.id === originalId ? { ...originalContribution, hasError: true, isOptimistic: false } : c));
       } finally {
         setIsSavingContribution(false);
       }
@@ -240,7 +235,7 @@ const App: React.FC = () => {
         isOptimistic: true,
         hasError: false,
       };
-      setContributions(prev => [...prev, optimisticNewContribution]);
+      setContributions((prev: Contribution[]) => [...prev, optimisticNewContribution]);
 
       try {
         const addedFromSupabase = await sbAddContribution({
@@ -249,12 +244,12 @@ const App: React.FC = () => {
           amount_usd: Number(contributionData.amount_usd),
           comment: contributionData.comment,
         });
-        setContributions(prev => prev.map(c => c.tempId === tempId ? { ...addedFromSupabase, isOptimistic: false, hasError: false } : c));
+        setContributions((prev: Contribution[]) => prev.map((c: Contribution) => c.tempId === tempId ? { ...addedFromSupabase, isOptimistic: false, hasError: false } : c));
       } catch (error: any) {
         console.error("Error adding contribution to Supabase:", error);
         const errorMessage = getFormattedErrorMessage(error);
         alert(`Failed to add contribution: ${errorMessage}. Removing optimistic entry.`);
-        setContributions(prev => prev.filter(c => c.tempId !== tempId));
+        setContributions((prev: Contribution[]) => prev.filter((c: Contribution) => c.tempId !== tempId));
       } finally {
         setIsSavingContribution(false);
       }
@@ -263,26 +258,51 @@ const App: React.FC = () => {
   };
 
   const confirmDeleteContribution = async () => {
-    if (!itemToDeleteId) return;
+    console.log("🔥 confirmDeleteContribution called", { itemToDeleteId, isDeletingContribution });
+
+    if (!itemToDeleteId || isDeletingContribution) {
+      console.log("❌ Early return", { itemToDeleteId, isDeletingContribution });
+      return; // Prevent multiple calls
+    }
 
     const contributionId = itemToDeleteId;
     const previousContributions = [...contributions]; // Capture current state for potential rollback
-    setContributions(prev => prev.filter(c => c.id !== contributionId));
-    setIsAlertOpen(false);
+
+    console.log("✅ Starting delete process for:", contributionId);
+
+    // Set loading state first
+    setIsDeletingContribution(true);
+    setIsAlertOpen(false); // Close the current alert
     setItemToDeleteId(null);
+
+    // Then update the UI optimistically
+    setContributions((prev: Contribution[]) => prev.filter((c: Contribution) => c.id !== contributionId));
 
     try {
       await sbDeleteContribution(contributionId);
+      // If successful, the UI is already updated. No further action needed here.
     } catch (error: any) {
       console.error("Error deleting contribution from Supabase:", error);
       const errorMessage = getFormattedErrorMessage(error);
-      alert(`Failed to delete contribution: ${errorMessage}. Reverting deletion.`);
-      setContributions(previousContributions);
+      // Display the error using the AlertDialog itself
+      setAlertConfig({
+        title: "Deletion Failed",
+        description: `Failed to delete contribution: ${errorMessage}. Please try again.`,
+        confirmButtonText: "OK",
+        onConfirm: () => {
+          setIsAlertOpen(false);
+          setAlertConfig(null);
+        },
+      });
+      setIsAlertOpen(true); // Re-open or keep open to show error
+      setContributions(previousContributions); // Revert UI change
+    } finally {
+      setIsDeletingContribution(false); // Reset loading state
     }
   };
   
   const handleDeleteContributionRequest = (contributionId: string) => {
-    const contributionToDelete = contributions.find(c => c.id === contributionId);
+    const contributionToDelete = contributions.find((c: Contribution) => c.id === contributionId);
     if (!contributionToDelete) return;
 
     setItemToDeleteId(contributionId);
@@ -300,7 +320,7 @@ const App: React.FC = () => {
     setIsSavingContributor(true);
     try {
       const newContributor = await sbAddContributor(contributorData);
-      setContributors(prev => [...prev, newContributor].sort((a, b) => a.name.localeCompare(b.name)));
+      setContributors((prev: Contributor[]) => [...prev, newContributor].sort((a: Contributor, b: Contributor) => a.name.localeCompare(b.name)));
     } catch (error: any) {
       console.error("Error adding contributor:", error);
       const errorMessage = getFormattedErrorMessage(error);
@@ -314,7 +334,7 @@ const App: React.FC = () => {
     setIsSavingContributor(true);
     try {
       const updatedContributor = await sbUpdateContributor(id, updates);
-      setContributors(prev => prev.map(c => c.id === id ? { ...c, ...updatedContributor } : c).sort((a, b) => a.name.localeCompare(b.name)));
+      setContributors((prev: Contributor[]) => prev.map((c: Contributor) => c.id === id ? { ...c, ...updatedContributor } : c).sort((a: Contributor, b: Contributor) => a.name.localeCompare(b.name)));
     } catch (error: any) {
       console.error("Error updating contributor:", error);
       const errorMessage = getFormattedErrorMessage(error);
@@ -337,21 +357,21 @@ const App: React.FC = () => {
   const closeModal = () => { 
     setModalView(ModalView.NONE); 
     setEditingContribution(null); 
-    setContributions(prev => prev.map(c => c.hasError ? {...c, hasError: false} : c)); 
+    setContributions((prev: Contribution[]) => prev.map((c: Contribution) => c.hasError ? {...c, hasError: false} : c));
   };
 
   const closeAlert = () => {
     setIsAlertOpen(false);
     setAlertConfig(null);
     setItemToDeleteId(null);
-  }
+  };
 
   const contributorSummaries = useMemo((): ContributorSummary[] => {
-    const grandTotal = contributions.filter(c => !c.isOptimistic || c.hasError === false).reduce((sum, c) => sum + c.amount_usd, 0);
-    return contributors.map(contributor => {
+    const grandTotal = contributions.filter((c: Contribution) => !c.isOptimistic || c.hasError === false).reduce((sum: number, c: Contribution) => sum + c.amount_usd, 0);
+    return contributors.map((contributor: Contributor) => {
       const totalByContributor = contributions
-        .filter(c => c.contributor_id === contributor.id && (!c.isOptimistic || c.hasError === false))
-        .reduce((sum, c) => sum + c.amount_usd, 0);
+        .filter((c: Contribution) => c.contributor_id === contributor.id && (!c.isOptimistic || c.hasError === false))
+        .reduce((sum: number, c: Contribution) => sum + c.amount_usd, 0);
       const percentageShare = grandTotal > 0 ? (totalByContributor / grandTotal) * 100 : 0;
       const targetAmountFor50Percent = grandTotal > 0 ? grandTotal * 0.5 : 0;
       let progressTo50PercentTarget = targetAmountFor50Percent > 0 ? (totalByContributor / targetAmountFor50Percent) * 100 : (grandTotal === 0 ? 100 : 0);
@@ -397,8 +417,13 @@ const App: React.FC = () => {
               {contributors.length > 0 ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 mb-8">
-                    {contributorSummaries.map((summary, index) => (
-                      <SummaryCard key={summary.id} contributor={summary} color={CHART_COLORS[index % CHART_COLORS.length]} isDarkMode={isDarkMode} />
+                    {contributorSummaries.map((summary: ContributorSummary, index: number) => (
+                      <SummaryCard
+                        key={summary.id}
+                        contributor={summary}
+                        color={CHART_COLORS[index % CHART_COLORS.length]}
+                        isDarkMode={isDarkMode}
+                      />
                     ))}
                   </div>
                   <ContributionDonutChart 
@@ -413,7 +438,7 @@ const App: React.FC = () => {
                   <p className="text-lg text-slate-600 dark:text-dark-text-secondary">No contributors found.</p>
                   {currentSupabaseStatus.type === 'success' && 
                     <p className="mt-2 text-sm text-slate-500 dark:text-dark-text-secondary">
-                        Please add contributors in <button onClick={openSettingsModal} className="text-nebula-purple dark:text-brand-purple hover:underline">Settings</button>.
+                        Please add contributors in <button type="button" onClick={openSettingsModal} className="text-nebula-purple dark:text-brand-purple hover:underline">Settings</button>.
                     </p>
                   }
                 </div>
@@ -440,7 +465,7 @@ const App: React.FC = () => {
                 <p className="text-lg text-slate-600 dark:text-dark-text-secondary">Cannot load data.</p>
                 <p className="mt-2 text-sm text-slate-500 dark:text-dark-text-secondary">
                     Supabase connection issue: {currentSupabaseStatus.message}
-                    Please verify your setup in <button onClick={openSettingsModal} className="text-nebula-purple dark:text-brand-purple hover:underline">Settings</button>.
+                    Please verify your setup in <button type="button" onClick={openSettingsModal} className="text-nebula-purple dark:text-brand-purple hover:underline">Settings</button>.
                 </p>
             </div>
         )}
@@ -489,10 +514,13 @@ const App: React.FC = () => {
             title={alertConfig.title}
             description={alertConfig.description}
             confirmButtonText={alertConfig.confirmButtonText}
+            isLoading={isDeletingContribution} // Pass the loading state
         />
       )}
+
     </div>
   );
 };
+
 
 export default App;

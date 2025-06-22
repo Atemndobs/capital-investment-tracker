@@ -409,7 +409,15 @@ const ContributionListItem: React.FC<{
         <div className="flex items-center justify-end space-x-2">
           {contribution.hasError && <AlertTriangleIcon className="w-4 h-4 text-red-500" title="Error processing this item"/> }
           <button onClick={() => onEdit(contribution)} className="text-nebula-blue hover:text-blue-700 dark:text-nebula-light-blue dark:hover:text-blue-400 p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors" title="Edit contribution" disabled={contribution.isOptimistic}><EditIcon className="w-4 h-4" title="Edit Icon" /></button>
-          <button onClick={() => onDeleteRequest(contribution.id)} className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title="Delete contribution" disabled={contribution.isOptimistic}><DeleteIcon className="w-4 h-4" title="Delete Icon" /></button>
+          <button
+            type="button"
+            onClick={() => onDeleteRequest(contribution.id)}
+            className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+            title="Delete contribution"
+            disabled={contribution.isOptimistic}
+          >
+            <DeleteIcon className="w-4 h-4" title="Delete Icon" />
+          </button>
         </div>
       </td>
     </tr>
@@ -650,6 +658,7 @@ interface AlertDialogProps {
   description: string;
   confirmButtonText?: string;
   cancelButtonText?: string;
+  isLoading?: boolean; // Add loading state prop
 }
 
 export const AlertDialog: React.FC<AlertDialogProps> = ({
@@ -659,7 +668,8 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
   title,
   description,
   confirmButtonText = "Confirm",
-  cancelButtonText = "Cancel"
+  cancelButtonText = "Cancel",
+  isLoading = false
 }) => {
   if (!isOpen) return null;
 
@@ -671,11 +681,21 @@ export const AlertDialog: React.FC<AlertDialogProps> = ({
           <p id="alert-dialog-description" className="text-sm text-slate-600 dark:text-dark-text-secondary mb-6">{description}</p>
         </div>
         <div className="px-6 py-4 bg-slate-50 dark:bg-dark-card-hover/50 border-t border-slate-200 dark:border-dark-border flex justify-end space-x-3 rounded-b-xl">
-          <button onClick={onClose} className={secondaryButtonClasses}>
+          <button
+            type="button"
+            onClick={onClose}
+            className={secondaryButtonClasses}
+            disabled={isLoading}
+          >
             {cancelButtonText}
           </button>
-          <button onClick={onConfirm} className={destructiveButtonClasses}>
-            {confirmButtonText}
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={destructiveButtonClasses}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Deleting...' : confirmButtonText}
           </button>
         </div>
       </div>
