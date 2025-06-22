@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  web:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: capital-tracker
+    restart: unless-stopped
+    image: atemndobs/capital-tracker-amd64:v0.1
+    ports:
+      - "5533:80"
+    env_file:
+      - .env  # Load environment variables from .env file
+    environment:
+      - NODE_ENV=production
+      - PWA_ENABLED=true
+      - VITE_PWA_ENABLED=true
+      # Add other environment variables here or use env_file above
+    volumes:
+      - ./.env:/usr/share/nginx/html/.env:ro  # Mount .env file into container
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost/manifest.webmanifest"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

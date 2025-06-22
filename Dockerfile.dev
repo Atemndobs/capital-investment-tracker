@@ -1,0 +1,22 @@
+# Development Dockerfile for PWA testing
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install dependencies for development
+RUN apk add --no-cache git
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including dev dependencies)
+RUN npm ci --silent
+
+# Copy source code
+COPY . .
+
+# Expose ports for dev server and preview
+EXPOSE 5173 4173
+
+# Default command (can be overridden in docker-compose)
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

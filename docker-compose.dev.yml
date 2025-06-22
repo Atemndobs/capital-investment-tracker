@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  web-dev:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: capital-tracker-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"  # Vite dev server
+      - "4173:4173"  # Vite preview server
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - VITE_PWA_ENABLED=true
+      - CHOKIDAR_USEPOLLING=true  # For file watching in Docker
+    volumes:
+      - .:/app
+      - /app/node_modules  # Anonymous volume for node_modules
+      - ./.env:/app/.env:ro
+    command: npm run dev -- --host 0.0.0.0
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:5173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - dev-network
+
+  # Preview service for testing PWA build
+  web-preview:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: capital-tracker-preview
+    restart: unless-stopped
+    ports:
+      - "4174:80"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PWA_ENABLED=true
+      - VITE_PWA_ENABLED=true
+    volumes:
+      - ./.env:/usr/share/nginx/html/.env:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost/manifest.webmanifest"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - dev-network
+    profiles:
+      - preview  # Only start with --profile preview
+
+networks:
+  dev-network:
+    driver: bridge
