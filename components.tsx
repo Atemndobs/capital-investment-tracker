@@ -271,11 +271,12 @@ export const SetupBanner: React.FC<SetupBannerProps> = ({ onOpenSettings }) => (
 
 
 interface SummaryCardProps {
-  contributor: ContributorSummary;
-  color: string;
-  isDarkMode: boolean;
-}
-export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, isDarkMode }) => {
+    contributor: ContributorSummary;
+    color: string;
+    isDarkMode: boolean;
+    grandTotalAllContributors: number;
+  }
+export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, isDarkMode, grandTotalAllContributors }) => {
   const styles = getCardStyles(contributor.stats.progressToTarget, color, isDarkMode);
   const cardStyle = { borderTopColor: color, borderTopWidth: '4px', backgroundColor: styles.backgroundColor };
   
@@ -294,7 +295,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, is
         </div>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between items-center">
-            <span className={`${styles.secondaryTextColor}`}>Total Invested:</span>
+            <span className={`${styles.secondaryTextColor}`}>Total Invested (Individual):</span>
             <span className={`font-bold text-lg ${styles.textColor}`}>${contributor.stats.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center">
@@ -312,7 +313,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ contributor, color, is
        <div className={`mt-4 pt-4 border-t ${styles.innerBorderColor}`}>
         <div className={`text-xs ${styles.footerTextColor} space-y-1`}>
           <p>Represents {contributor.stats.percentageShare.toFixed(1)}% of total capital</p>
-          <p>Total Amount: ${contributor.stats.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p>Total Amount (All Contributors): ${grandTotalAllContributors.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
         </div>
       </div>
     </div>

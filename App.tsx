@@ -467,14 +467,19 @@ const App: React.FC = () => {
               {contributors.length > 0 ? (
                 <>
                   <div className={getGridClasses(contributorSummaries.length)}>
-                    {contributorSummaries.map((summary: ContributorSummary, index: number) => (
-                      <SummaryCard
-                        key={summary.id}
-                        contributor={summary}
-                        color={CHART_COLORS[index % CHART_COLORS.length]}
-                        isDarkMode={isDarkMode}
-                      />
-                    ))}
+                    {(() => {
+                      // Calculate grandTotal here based on contributions, similar to how it's done in useMemo for contributorSummaries
+                      const totalAllInvestments = contributions.filter((c: Contribution) => !c.isOptimistic || c.hasError === false).reduce((sum: number, c: Contribution) => sum + c.amount_usd, 0);
+                      return contributorSummaries.map((summary: ContributorSummary, index: number) => (
+                        <SummaryCard
+                          key={summary.id}
+                          contributor={summary}
+                          color={CHART_COLORS[index % CHART_COLORS.length]}
+                          isDarkMode={isDarkMode}
+                          grandTotalAllContributors={totalAllInvestments}
+                        />
+                      ));
+                    })()}
                   </div>
                   <ContributionDonutChart 
                     summaries={contributorSummaries} 
